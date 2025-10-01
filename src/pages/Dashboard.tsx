@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { TrendingUp, Target, DollarSign, AlertCircle } from "lucide-react";
 
@@ -17,6 +18,7 @@ interface DashboardStats {
 const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))'];
 
 export default function Dashboard() {
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
   const [stats, setStats] = useState<DashboardStats>({
     totalIncome: 0,
     target: 0,
@@ -29,24 +31,24 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchDashboardData();
-  }, []);
+  }, [selectedYear]);
 
   const fetchDashboardData = async () => {
     try {
-      const currentYear = new Date().getFullYear();
+      const year = parseInt(selectedYear);
 
-      // Fetch projects for current year
+      // Fetch projects for selected year
       const { data: projects } = await supabase
         .from("projects")
         .select("*")
-        .eq("year", currentYear);
+        .eq("year", year);
 
-      // Fetch target for current year
+      // Fetch target for selected year
       const { data: targetData } = await supabase
         .from("targets")
         .select("*")
-        .eq("year", currentYear)
-        .single();
+        .eq("year", year)
+        .maybeSingle();
 
       if (projects) {
         const totalIncome = projects.reduce((sum, p) => sum + Number(p.nett_gp), 0);
@@ -117,7 +119,18 @@ export default function Dashboard() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Dashboard</h1>
-        <div className="text-sm text-muted-foreground">Year {new Date().getFullYear()}</div>
+        <Select value={selectedYear} onValueChange={setSelectedYear}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Select year" />
+          </SelectTrigger>
+          <SelectContent>
+            {[2020, 2021, 2022, 2023, 2024, 2025, 2026].map((year) => (
+              <SelectItem key={year} value={year.toString()}>
+                Year {year}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Stats Cards */}
@@ -128,7 +141,7 @@ export default function Dashboard() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(stats.totalIncome)}</div>
+            <div className="text-2xl font-bold break-words">{formatCurrency(stats.totalIncome)}</div>
           </CardContent>
         </Card>
 
@@ -138,7 +151,7 @@ export default function Dashboard() {
             <Target className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(stats.target)}</div>
+            <div className="text-2xl font-bold break-words">{formatCurrency(stats.target)}</div>
           </CardContent>
         </Card>
 
@@ -148,7 +161,7 @@ export default function Dashboard() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-success">{stats.achievement.toFixed(1)}%</div>
+            <div className="text-2xl font-bold text-success break-words">{stats.achievement.toFixed(1)}%</div>
           </CardContent>
         </Card>
 
@@ -158,7 +171,7 @@ export default function Dashboard() {
             <AlertCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-warning">{formatCurrency(stats.gap)}</div>
+            <div className="text-2xl font-bold text-warning break-words">{formatCurrency(stats.gap)}</div>
           </CardContent>
         </Card>
       </div>
