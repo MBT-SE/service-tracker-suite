@@ -28,10 +28,40 @@ export default function Dashboard() {
     categoryData: [],
   });
   const [loading, setLoading] = useState(true);
+  const [analysis, setAnalysis] = useState<string>("");
+  const [analyzingData, setAnalyzingData] = useState(false);
 
   useEffect(() => {
     fetchDashboardData();
   }, [selectedYear]);
+
+  const analyzeData = async () => {
+    setAnalyzingData(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('analyze-income', {
+        body: {
+          totalIncome: stats.totalIncome,
+          target: stats.target,
+          achievement: stats.achievement,
+          gap: stats.gap,
+          quarterlyData: stats.quarterlyData,
+          categoryData: stats.categoryData,
+          year: selectedYear,
+        }
+      });
+
+      if (error) throw error;
+      
+      if (data?.analysis) {
+        setAnalysis(data.analysis);
+      }
+    } catch (error: any) {
+      console.error("Error analyzing data:", error);
+      setAnalysis("Failed to generate analysis. Please try again.");
+    } finally {
+      setAnalyzingData(false);
+    }
+  };
 
   const fetchDashboardData = async () => {
     try {
@@ -238,6 +268,31 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* AI Analytics & Recommendations */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>AI Analytics & Recommendations</CardTitle>
+          <button
+            onClick={analyzeData}
+            disabled={analyzingData || stats.totalIncome === 0}
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+          >
+            {analyzingData ? "Analyzing..." : "Generate Insights"}
+          </button>
+        </CardHeader>
+        <CardContent>
+          {analysis ? (
+            <div className="prose prose-sm max-w-none">
+              <div className="whitespace-pre-wrap text-sm leading-relaxed">{analysis}</div>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              Click "Generate Insights" to get AI-powered analysis and recommendations based on your income data.
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

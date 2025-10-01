@@ -1,1 +1,4 @@
 project_id = "mnfkalmczrukuzmxirbk"
+
+[functions.analyze-income]
+verify_jwt = false
