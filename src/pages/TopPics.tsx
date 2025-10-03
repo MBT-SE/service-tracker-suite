@@ -2,42 +2,92 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trophy, Medal, Award } from "lucide-react";
+import { Trophy, Medal, Award, Package } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+
+interface ProductBreakdown {
+  product: string;
+  income: number;
+}
 
 interface PicRanking {
   pic: string;
   totalIncome: number;
   projectCount: number;
+  products: ProductBreakdown[];
 }
 
 export default function TopPics() {
   const [selectedYear, setSelectedYear] = useState("all");
+  const [selectedProduct, setSelectedProduct] = useState("all");
   const [rankings, setRankings] = useState<PicRanking[]>([]);
+  const [products, setProducts] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  useEffect(() => {
     fetchRankings();
-  }, [selectedYear]);
+  }, [selectedYear, selectedProduct]);
+
+  const fetchProducts = async () => {
+    try {
+      const { data: projects } = await supabase
+        .from("projects")
+        .select("product");
+
+      if (projects) {
+        const uniqueProducts = Array.from(
+          new Set(projects.map(p => p.product).filter(Boolean))
+        ).sort();
+        setProducts(uniqueProducts);
+      }
+    } catch (error) {
+      console.error("Error fetching products:", error);
+    }
+  };
 
   const fetchRankings = async () => {
     try {
-      let query = supabase.from("projects").select("pic, nett_gp");
+      let query = supabase.from("projects").select("pic, nett_gp, product");
 
       if (selectedYear !== "all") {
         query = query.eq("year", parseInt(selectedYear));
       }
 
+      if (selectedProduct !== "all") {
+        query = query.eq("product", selectedProduct);
+      }
+
       const { data: projects } = await query;
 
       if (projects) {
-        // Group by PIC and calculate totals
-        const picMap = new Map<string, { total: number; count: number }>();
+        // Group by PIC and calculate totals with product breakdown
+        const picMap = new Map<string, { 
+          total: number; 
+          count: number; 
+          products: Map<string, number> 
+        }>();
         
         projects.forEach((project) => {
-          const current = picMap.get(project.pic) || { total: 0, count: 0 };
+          const current = picMap.get(project.pic) || { 
+            total: 0, 
+            count: 0, 
+            products: new Map() 
+          };
+          
+          const productIncome = current.products.get(project.product || 'N/A') || 0;
+          current.products.set(
+            project.product || 'N/A', 
+            productIncome + Number(project.nett_gp)
+          );
+          
           picMap.set(project.pic, {
             total: current.total + Number(project.nett_gp),
             count: current.count + 1,
+            products: current.products,
           });
         });
 
@@ -47,6 +97,9 @@ export default function TopPics() {
             pic,
             totalIncome: data.total,
             projectCount: data.count,
+            products: Array.from(data.products.entries())
+              .map(([product, income]) => ({ product, income }))
+              .sort((a, b) => b.income - a.income),
           }))
           .sort((a, b) => b.totalIncome - a.totalIncome)
           .slice(0, 5); // Top 5
@@ -91,26 +144,41 @@ export default function TopPics() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-bold">Top PICs Ranking</h1>
           <p className="text-muted-foreground mt-1">
             Top 5 performers ranked by total income generated
           </p>
         </div>
-        <Select value={selectedYear} onValueChange={setSelectedYear}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Select period" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Time</SelectItem>
-            {[2020, 2021, 2022, 2023, 2024, 2025, 2026].map((year) => (
-              <SelectItem key={year} value={year.toString()}>
-                Year {year}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex gap-3">
+          <Select value={selectedProduct} onValueChange={setSelectedProduct}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Filter by product" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Products</SelectItem>
+              {products.map((product) => (
+                <SelectItem key={product} value={product}>
+                  {product}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={selectedYear} onValueChange={setSelectedYear}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Select period" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Time</SelectItem>
+              {[2020, 2021, 2022, 2023, 2024, 2025, 2026].map((year) => (
+                <SelectItem key={year} value={year.toString()}>
+                  Year {year}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {rankings.length === 0 ? (
@@ -126,27 +194,51 @@ export default function TopPics() {
           {rankings.map((ranking, index) => (
             <Card key={ranking.pic} className="overflow-hidden">
               <CardContent className="p-6">
-                <div className="flex items-center gap-4">
-                  <div className="flex-shrink-0 w-16 flex items-center justify-center">
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0 w-16 flex items-center justify-center pt-2">
                     {getRankIcon(index + 1) || (
                       <div className="text-2xl font-bold text-muted-foreground">
                         #{index + 1}
                       </div>
                     )}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-xl font-semibold truncate">
-                      {ranking.pic}
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      {ranking.projectCount} {ranking.projectCount === 1 ? "project" : "projects"}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-primary break-words">
-                      {formatCurrency(ranking.totalIncome)}
+                  <div className="flex-1 min-w-0 space-y-3">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <h3 className="text-xl font-semibold">
+                          {ranking.pic}
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          {ranking.projectCount} {ranking.projectCount === 1 ? "project" : "projects"}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-2xl font-bold text-primary break-words">
+                          {formatCurrency(ranking.totalIncome)}
+                        </div>
+                        <p className="text-sm text-muted-foreground">Total Income</p>
+                      </div>
                     </div>
-                    <p className="text-sm text-muted-foreground">Total Income</p>
+                    
+                    {ranking.products.length > 0 && (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                          <Package className="h-4 w-4" />
+                          Product Breakdown
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {ranking.products.map((productData) => (
+                            <Badge 
+                              key={productData.product} 
+                              variant="secondary"
+                              className="text-xs"
+                            >
+                              {productData.product}: {formatCurrency(productData.income)}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>
