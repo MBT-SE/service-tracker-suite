@@ -12,6 +12,7 @@ import { ArrowLeft } from "lucide-react";
 import { z } from "zod";
 
 const projectSchema = z.object({
+  pid: z.string().min(1, "PID is required"),
   business_partner: z.string().min(2, "Business Partner is required"),
   end_user: z.string().min(2, "End User is required"),
   category: z.enum(["Implementation", "Maintenance", "LSC"]),
@@ -38,6 +39,7 @@ export default function ProjectForm() {
   const isEdit = !!id;
 
   const [formData, setFormData] = useState({
+    pid: "",
     business_partner: "",
     end_user: "",
     category: "Implementation",
@@ -68,6 +70,7 @@ export default function ProjectForm() {
 
       if (data) {
         setFormData({
+          pid: data.pid || "",
           business_partner: data.business_partner,
           end_user: data.end_user,
           category: data.category,
@@ -100,6 +103,7 @@ export default function ProjectForm() {
         const { error } = await supabase
           .from("projects")
           .update({
+            pid: validatedData.pid,
             business_partner: validatedData.business_partner,
             end_user: validatedData.end_user,
             category: validatedData.category,
@@ -118,6 +122,7 @@ export default function ProjectForm() {
         const { error } = await supabase
           .from("projects")
           .insert([{
+            pid: validatedData.pid,
             business_partner: validatedData.business_partner,
             end_user: validatedData.end_user,
             category: validatedData.category,
@@ -127,7 +132,6 @@ export default function ProjectForm() {
             quarter: validatedData.quarter,
             year: validatedData.year,
             keterangan: validatedData.keterangan,
-            pid: "",
           }]);
 
         if (error) throw error;
@@ -162,6 +166,19 @@ export default function ProjectForm() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="pid">PID *</Label>
+                <Input
+                  id="pid"
+                  value={formData.pid}
+                  onChange={(e) =>
+                    setFormData({ ...formData, pid: e.target.value })
+                  }
+                  placeholder="e.g. P250001"
+                  required
+                />
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="business_partner">Business Partner *</Label>
                 <Input

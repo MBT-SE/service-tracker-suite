@@ -11,6 +11,7 @@ import ProjectForm from "./pages/ProjectForm";
 import Targets from "./pages/Targets";
 import Reports from "./pages/Reports";
 import TopPics from "./pages/TopPics";
+import TopProducts from "./pages/TopProducts";
 import NotFound from "./pages/NotFound";
 import { AppLayout } from "./components/layout/AppLayout";
 
@@ -59,6 +60,7 @@ const App = () => (
               <Route path="targets" element={<Targets />} />
               <Route path="reports" element={<Reports />} />
               <Route path="top-pics" element={<TopPics />} />
+              <Route path="top-products" element={<TopProducts />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
