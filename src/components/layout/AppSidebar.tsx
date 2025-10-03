@@ -1,4 +1,4 @@
-import { LayoutDashboard, FolderKanban, Target, FileText } from "lucide-react";
+import { LayoutDashboard, FolderKanban, Target, FileText, TrendingUp } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import {
   Sidebar,
@@ -16,6 +16,7 @@ const menuItems = [
   { title: "Projects", url: "/projects", icon: FolderKanban },
   { title: "Targets", url: "/targets", icon: Target },
   { title: "Reports", url: "/reports", icon: FileText },
+  { title: "Top PICs", url: "/top-pics", icon: TrendingUp },
 ];
 
 export function AppSidebar() {

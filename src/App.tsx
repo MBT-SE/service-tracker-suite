@@ -10,6 +10,7 @@ import Projects from "./pages/Projects";
 import ProjectForm from "./pages/ProjectForm";
 import Targets from "./pages/Targets";
 import Reports from "./pages/Reports";
+import TopPics from "./pages/TopPics";
 import NotFound from "./pages/NotFound";
 import { AppLayout } from "./components/layout/AppLayout";
 
@@ -57,6 +58,7 @@ const App = () => (
               <Route path="projects/edit/:id" element={<ProjectForm />} />
               <Route path="targets" element={<Targets />} />
               <Route path="reports" element={<Reports />} />
+              <Route path="top-pics" element={<TopPics />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
