@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-import { TrendingUp, Target, DollarSign, AlertCircle } from "lucide-react";
+import { TrendingUp, Target, DollarSign, AlertCircle, Trophy, Medal, Award, Package, Users } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 interface DashboardStats {
   totalIncome: number;
@@ -13,6 +14,18 @@ interface DashboardStats {
   gap: number;
   quarterlyData: Array<{ quarter: string; income: number; target: number }>;
   categoryData: Array<{ name: string; value: number }>;
+}
+
+interface PicRanking {
+  pic: string;
+  totalIncome: number;
+  projectCount: number;
+}
+
+interface ProductRanking {
+  product: string;
+  totalIncome: number;
+  projectCount: number;
 }
 
 const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))'];
@@ -30,6 +43,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [analysis, setAnalysis] = useState<string>("");
   const [analyzingData, setAnalyzingData] = useState(false);
+  const [topPics, setTopPics] = useState<PicRanking[]>([]);
+  const [topProducts, setTopProducts] = useState<ProductRanking[]>([]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -121,6 +136,50 @@ export default function Dashboard() {
           quarterlyData,
           categoryData,
         });
+
+        // Calculate top PICs
+        const picMap = new Map<string, { total: number; count: number }>();
+        projects.forEach((project) => {
+          const picName = project.pic || 'N/A';
+          const current = picMap.get(picName) || { total: 0, count: 0 };
+          picMap.set(picName, {
+            total: current.total + Number(project.nett_gp),
+            count: current.count + 1,
+          });
+        });
+
+        const topPicsArray = Array.from(picMap.entries())
+          .map(([pic, data]) => ({
+            pic,
+            totalIncome: data.total,
+            projectCount: data.count,
+          }))
+          .sort((a, b) => b.totalIncome - a.totalIncome)
+          .slice(0, 5);
+
+        setTopPics(topPicsArray);
+
+        // Calculate top products
+        const productMap = new Map<string, { total: number; count: number }>();
+        projects.forEach((project) => {
+          const productName = project.product || 'N/A';
+          const current = productMap.get(productName) || { total: 0, count: 0 };
+          productMap.set(productName, {
+            total: current.total + Number(project.nett_gp),
+            count: current.count + 1,
+          });
+        });
+
+        const topProductsArray = Array.from(productMap.entries())
+          .map(([product, data]) => ({
+            product,
+            totalIncome: data.total,
+            projectCount: data.count,
+          }))
+          .sort((a, b) => b.totalIncome - a.totalIncome)
+          .slice(0, 5);
+
+        setTopProducts(topProductsArray);
       }
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
@@ -135,6 +194,19 @@ export default function Dashboard() {
       currency: "IDR",
       minimumFractionDigits: 0,
     }).format(value);
+  };
+
+  const getRankIcon = (rank: number) => {
+    switch (rank) {
+      case 1:
+        return <Trophy className="h-6 w-6 text-yellow-500" />;
+      case 2:
+        return <Medal className="h-6 w-6 text-gray-400" />;
+      case 3:
+        return <Award className="h-6 w-6 text-amber-600" />;
+      default:
+        return <div className="text-lg font-bold text-muted-foreground">#{rank}</div>;
+    }
   };
 
   if (loading) {
@@ -265,6 +337,83 @@ export default function Dashboard() {
                 <Tooltip formatter={(value: number) => formatCurrency(value)} />
               </PieChart>
             </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Top PICs and Top Products */}
+      <div className="grid gap-4 md:grid-cols-2">
+        {/* Top PICs */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Top 5 PICs
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {topPics.map((ranking, index) => (
+                <div key={ranking.pic} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                  <div className="flex-shrink-0 w-10 flex items-center justify-center">
+                    {getRankIcon(index + 1)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold truncate">{ranking.pic}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {ranking.projectCount} {ranking.projectCount === 1 ? "project" : "projects"}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-bold text-primary text-sm break-words">
+                      {formatCurrency(ranking.totalIncome)}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {topPics.length === 0 && (
+                <div className="text-center py-6 text-muted-foreground text-sm">
+                  No data available
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Top Products */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              Top 5 Products
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {topProducts.map((ranking, index) => (
+                <div key={ranking.product} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                  <div className="flex-shrink-0 w-10 flex items-center justify-center">
+                    {getRankIcon(index + 1)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold truncate">{ranking.product}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {ranking.projectCount} {ranking.projectCount === 1 ? "project" : "projects"}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-bold text-primary text-sm break-words">
+                      {formatCurrency(ranking.totalIncome)}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {topProducts.length === 0 && (
+                <div className="text-center py-6 text-muted-foreground text-sm">
+                  No data available
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
