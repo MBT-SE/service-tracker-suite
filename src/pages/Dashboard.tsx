@@ -14,6 +14,7 @@ interface DashboardStats {
   gap: number;
   quarterlyData: Array<{ quarter: string; income: number; target: number }>;
   categoryData: Array<{ name: string; value: number }>;
+  yoyData: Array<{ year: string; income: number }>;
 }
 
 interface PicRanking {
@@ -39,6 +40,7 @@ export default function Dashboard() {
     gap: 0,
     quarterlyData: [],
     categoryData: [],
+    yoyData: [],
   });
   const [loading, setLoading] = useState(true);
   const [analysis, setAnalysis] = useState<string>("");
@@ -95,6 +97,29 @@ export default function Dashboard() {
         .eq("year", year)
         .maybeSingle();
 
+      // Fetch YoY data (last 5 years including current)
+      const currentYear = parseInt(selectedYear);
+      const yearsToFetch = [currentYear - 4, currentYear - 3, currentYear - 2, currentYear - 1, currentYear];
+      
+      const { data: allYearProjects } = await supabase
+        .from("projects")
+        .select("year, nett_gp")
+        .in("year", yearsToFetch);
+
+      // Calculate YoY data
+      const yoyMap = new Map<number, number>();
+      yearsToFetch.forEach(y => yoyMap.set(y, 0));
+      
+      allYearProjects?.forEach((project) => {
+        const current = yoyMap.get(project.year) || 0;
+        yoyMap.set(project.year, current + Number(project.nett_gp));
+      });
+
+      const yoyData = yearsToFetch.map(y => ({
+        year: y.toString(),
+        income: yoyMap.get(y) || 0,
+      }));
+
       if (projects) {
         const totalIncome = projects.reduce((sum, p) => sum + Number(p.nett_gp), 0);
         const yearlyTarget = targetData?.yearly_target || 0;
@@ -135,6 +160,7 @@ export default function Dashboard() {
           gap,
           quarterlyData,
           categoryData,
+          yoyData,
         });
 
         // Calculate top PICs
@@ -292,7 +318,7 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
-      {/* Charts */}
+      {/* Charts Row 1: Quarterly and YoY Comparison */}
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
@@ -315,31 +341,50 @@ export default function Dashboard() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Income by Category</CardTitle>
+            <CardTitle>Year-over-Year Income Comparison</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={stats.categoryData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {stats.categoryData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
+              <BarChart data={stats.yoyData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="year" />
+                <YAxis tickFormatter={(value) => `${(value / 1000000).toFixed(0)}M`} />
                 <Tooltip formatter={(value: number) => formatCurrency(value)} />
-              </PieChart>
+                <Legend />
+                <Bar dataKey="income" fill="hsl(var(--chart-2))" name="Income" />
+              </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
       </div>
+
+      {/* Charts Row 2: Income by Category */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Income by Category</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={300}>
+            <PieChart>
+              <Pie
+                data={stats.categoryData}
+                cx="50%"
+                cy="50%"
+                labelLine={false}
+                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                outerRadius={80}
+                fill="#8884d8"
+                dataKey="value"
+              >
+                {stats.categoryData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip formatter={(value: number) => formatCurrency(value)} />
+            </PieChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
 
       {/* Top PICs and Top Products */}
       <div className="grid gap-4 md:grid-cols-2">
