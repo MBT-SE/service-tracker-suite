@@ -222,6 +222,17 @@ export default function Dashboard() {
     }).format(value);
   };
 
+  const formatCompactCurrency = (value: number) => {
+    if (value >= 1000000000) {
+      return `${(value / 1000000000).toFixed(1)}M`;
+    } else if (value >= 1000000) {
+      return `${(value / 1000000).toFixed(0)}jt`;
+    } else if (value >= 100000) {
+      return `${(value / 1000).toFixed(0)}rb`;
+    }
+    return value.toString();
+  };
+
   const getRankIcon = (rank: number) => {
     switch (rank) {
       case 1:
@@ -348,7 +359,7 @@ export default function Dashboard() {
               <BarChart data={stats.yoyData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="year" />
-                <YAxis tickFormatter={(value) => `${(value / 1000000).toFixed(0)}M`} />
+                <YAxis tickFormatter={formatCompactCurrency} />
                 <Tooltip formatter={(value: number) => formatCurrency(value)} />
                 <Legend />
                 <Bar dataKey="income" fill="hsl(var(--chart-2))" name="Income" />
